@@ -7,12 +7,13 @@ Production-ready Next.js application for clinic triage.
 ### 1. Push to GitHub
 Initialize a repository and push this code:
 ```bash
-git init
-git add .
-git commit -m "Initial MVP"
-git remote add origin <your-repo-url>
+# Repo is already initialized locally
+git branch -M main
 git push -u origin main
 ```
+
+**Note:** Ensure you have created the empty repository `swasthai-triage` on GitHub first.
+URL: https://github.com/Sankalp232004/swasthai-triage
 
 ### 2. Import to Vercel
 1. Go to [Vercel Dashboard](https://vercel.com/new).

@@ -53,9 +53,20 @@ export default function DoctorQueue() {
   };
 
   useEffect(() => {
-    fetchQueue();
-    // Clock Ticker (UI only)
-    setCurrentTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        window.location.href = "/login";
+        return;
+      }
+      
+      fetchQueue();
+      // Clock Ticker (UI only)
+      setCurrentTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+    };
+
+    checkAuth();
+
     const timer = setInterval(() => {
       setCurrentTime(new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
     }, 1000);

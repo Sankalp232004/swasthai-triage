@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2, AlertTriangle, CheckCircle2, ChevronLeft, RefreshCw } from "lucide-react";
+import { type TriageInputs } from "@/lib/triage-schema";
 
 // --- Types & Constants ---
 type Language = "en" | "hi";
@@ -11,7 +12,7 @@ type Language = "en" | "hi";
 type StepData = {
   id: string;
   type: "select" | "number" | "boolean" | "scale" | "grid";
-  field: string;
+  field: keyof TriageInputs;
   options?: string[];
   min?: number;
   max?: number;
@@ -90,7 +91,7 @@ export default function TriageWizard() {
   const [hasConsent, setHasConsent] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [lang, setLang] = useState<Language>("en");
-  const [answers, setAnswers] = useState<Record<string, any>>({});
+  const [answers, setAnswers] = useState<Partial<TriageInputs>>({});
   const [isRedFlagTriggered, setIsRedFlagTriggered] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -282,7 +283,7 @@ export default function TriageWizard() {
                       : "border-slate-200 bg-white hover:border-blue-300 active:scale-95"
                     }`}
                 >
-                  {lang === 'hi' && QUESTIONS[opt.toLowerCase()] ? QUESTIONS[opt.toLowerCase()].hi : opt}
+                  {lang === 'hi' && (QUESTIONS as any)[opt.toLowerCase()] ? (QUESTIONS as any)[opt.toLowerCase()].hi : opt}
                 </button>
               ))}
             </div>
@@ -314,16 +315,16 @@ export default function TriageWizard() {
               </div>
               
               <div className="grid grid-cols-3 gap-3">
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, ".", 0, "DEL"].map((key) => (
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, ".", 0, "DEL"].map((k) => (
                   <button
-                    key={key}
+                    key={String(k)}
                     onClick={() => {
-                      if (key === "DEL") {
+                      if (k === "DEL") {
                         const curr = String(answers[step.field] || "");
-                        setAnswers({ ...answers, [step.field]: curr.slice(0, -1) });
+                        setAnswers({ ...answers, [step.field]: curr.slice(0, -1) } as any);
                       } else {
                         const curr = String(answers[step.field] || "");
-                        if (curr.length < 5) setAnswers({ ...answers, [step.field]: curr + key });
+                        if (curr.length < 5) setAnswers({ ...answers, [step.field]: curr + k } as any);
                       }
                     }}
                     className={`h-16 text-2xl font-semibold rounded-lg shadow-sm active:scale-95 transition-all

@@ -15,7 +15,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error: "Invalid input",
-          details: result.error.errors.map((e) => ({
+          details: result.error.issues.map((e) => ({
             field: e.path.join("."),
             message: e.message,
           })),
@@ -77,7 +77,8 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("[Triage API Error]", error);
+    // Log error internally but don't expose details to client
+    console.error("[Triage API Error]", error instanceof Error ? error.message : "Unknown error");
     return NextResponse.json(
       { error: "Internal Server Error" },
       { status: 500 }

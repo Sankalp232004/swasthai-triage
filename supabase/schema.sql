@@ -29,9 +29,18 @@ CREATE TABLE public.patients (
 -- Enable RLS
 ALTER TABLE public.patients ENABLE ROW LEVEL SECURITY;
 
--- Allow all access (for MVP, lock down in production)
-CREATE POLICY "Enable all access" ON public.patients
-FOR ALL USING (TRUE) WITH CHECK (TRUE);
+-- Security Policies for Patients Table
+-- 1. Patients can be created by anyone (Public check-in kiosk)
+CREATE POLICY "Public create patients" ON public.patients
+FOR INSERT WITH CHECK (TRUE);
+
+-- 2. Only authenticated staff/doctors can view patients
+CREATE POLICY "Staff read patients" ON public.patients
+FOR SELECT TO authenticated USING (TRUE);
+
+-- 3. Only authenticated staff/doctors can update status/priority
+CREATE POLICY "Staff update patients" ON public.patients
+FOR UPDATE TO authenticated USING (TRUE);
 
 -- Index for queue queries
 CREATE INDEX idx_patients_status ON public.patients(status);
