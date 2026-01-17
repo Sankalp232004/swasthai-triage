@@ -137,7 +137,7 @@ export default function TriageWizard() {
   const handleNext = () => {
     const step = STEPS[currentStepIndex];
     // Check if required field is filled for "Next" button cases
-    if (answers[step.field] === undefined || answers[step.field] === "") {
+    if (answers[step.field] === undefined || (answers[step.field] as any) === "") {
       toast.error(t('yes')); 
       return;
     }
@@ -328,9 +328,9 @@ export default function TriageWizard() {
                       }
                     }}
                     className={`h-16 text-2xl font-semibold rounded-lg shadow-sm active:scale-95 transition-all
-                      ${key === "DEL" ? "bg-red-50 text-red-600" : "bg-white text-slate-700"}`}
+                      ${k === "DEL" ? "bg-red-50 text-red-600" : "bg-white text-slate-700"}`}
                   >
-                    {key}
+                    {k}
                   </button>
                 ))}
               </div>
@@ -371,7 +371,7 @@ export default function TriageWizard() {
                   type="range" 
                   min="0" max="10" 
                   step="1"
-                  value={answers[step.field] || 0}
+                  value={(answers[step.field] as number) || 0}
                   onChange={(e) => {
                      setAnswers({ ...answers, [step.field]: Number(e.target.value) });
                   }}
