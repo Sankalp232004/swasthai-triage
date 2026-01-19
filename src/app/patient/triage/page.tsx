@@ -137,10 +137,25 @@ export default function TriageWizard() {
 
   const handleNext = () => {
     const step = STEPS[currentStepIndex];
-    // Check if required field is filled for "Next" button cases
-    if (answers[step.field] === undefined || (answers[step.field] as any) === "") {
+    const val = answers[step.field];
+
+    // 1. Check Required
+    if (val === undefined || (val as any) === "") {
       toast.error(t('yes')); 
       return;
+    }
+
+    // 2. Check Range (Numbers)
+    if (step.type === "number") {
+      const num = Number(val);
+      if (step.min !== undefined && num < step.min) {
+        toast.error(`Value must be at least ${step.min}`);
+        return;
+      }
+      if (step.max !== undefined && num > step.max) {
+        toast.error(`Value must be at most ${step.max}`);
+        return;
+      }
     }
 
     if (currentStepIndex < STEPS.length - 1) {
