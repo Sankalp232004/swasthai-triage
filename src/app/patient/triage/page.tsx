@@ -93,6 +93,7 @@ export default function TriageWizard() {
   const [lang, setLang] = useState<Language>("en");
   const [answers, setAnswers] = useState<Partial<TriageInputs>>({});
   const [isRedFlagTriggered, setIsRedFlagTriggered] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<any>(null);
 
   useEffect(() => {
