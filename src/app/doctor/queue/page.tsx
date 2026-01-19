@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { supabase, type Patient } from "@/lib/supabase";
+import { supabase, type IntakeEvent } from "@/lib/supabase";
 import { toast } from "sonner";
 import { 
   Users, 
@@ -11,6 +11,7 @@ import {
   Activity, 
   CheckCircle2, 
   MoreHorizontal, 
+  Check,
   ArrowRight
 } from "lucide-react";
 
@@ -29,26 +30,34 @@ const DISPLAY_MAP = {
   GREEN: { label: "Low", color: "bg-emerald-500 border-emerald-600 text-white", icon: CheckCircle2 },
 };
 
+const OVERRIDE_REASONS = [
+  "Clinical Judgement - Higher Acuity",
+  "Clinical Judgement - Lower Acuity",
+  "Incorrect Vitals Entry",
+  "Patient Condition Changed",
+  "Other"
+];
+
 export default function DoctorQueue() {
-  const [patients, setPatients] = useState<Patient[]>([]);
+  const [patients, setPatients] = useState<IntakeEvent[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null); // For Override
+  const [selectedPatient, setSelectedPatient] = useState<IntakeEvent | null>(null); // For Override
   const [overrideBand, setOverrideBand] = useState<string>("RED");
-  const [overrideReason, setOverrideReason] = useState("");
+  const [overrideReason, setOverrideReason] = useState(OVERRIDE_REASONS[0]);
   const [currentTime, setCurrentTime] = useState("");
 
   // --- Data Fetching ---
   const fetchQueue = async () => {
     const { data, error } = await supabase
-      .from("patients")
+      .from("intake_events")
       .select("*")
-      .eq("status", "Waiting"); // ONLY Waiting
+      .neq("status", "Seen"); // Show all except Seen (Waiting, Consulting, etc)
 
     if (error) {
       toast.error("Connection Error");
       return;
     }
-    setPatients(data as Patient[]);
+    setPatients(data as IntakeEvent[]);
     setLoading(false);
   };
 
@@ -74,7 +83,7 @@ export default function DoctorQueue() {
     // Realtime Sub (Optimized for INSERT/UPDATE)
     const channel = supabase
       .channel("doctor_queue")
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'patients' }, fetchQueue)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'intake_events' }, fetchQueue)
       .subscribe();
 
     return () => { 
@@ -86,38 +95,37 @@ export default function DoctorQueue() {
   // --- Logic ---
   const sortedQueue = useMemo(() => {
     return [...patients].sort((a, b) => {
-      // 1. Priority Rank (Lower is more urgent)
-      const rankA = PRIORITY_ORDER[a.priority as keyof typeof PRIORITY_ORDER] || 99;
-      const rankB = PRIORITY_ORDER[b.priority as keyof typeof PRIORITY_ORDER] || 99;
+      // 1. Priority Rank (Band - Emergency -> Red -> Amber -> Green)
+      const rankA = PRIORITY_ORDER[a.risk_band as keyof typeof PRIORITY_ORDER] || 99;
+      const rankB = PRIORITY_ORDER[b.risk_band as keyof typeof PRIORITY_ORDER] || 99;
       if (rankA !== rankB) return rankA - rankB;
       
-      // 2. Time (Oldest first)
+      // 2. Time (FIFO - Oldest first)
       return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
     });
   }, [patients]);
 
-  const handleCallNext = async (id: string) => {
+  const handleMarkSeen = async (id: string) => {
     const { error } = await supabase
-      .from("patients")
-      .update({ status: 'Consulting', consultation_start_at: new Date().toISOString() })
+      .from("intake_events")
+      .update({ status: 'Seen' })
       .eq('id', id);
 
     if (error) toast.error("Action Failed");
-    else toast.success("Patient Called");
+    else toast.success("Patient Seen");
   };
 
   const handleOverride = async () => {
     if (!selectedPatient || !overrideReason) return;
     
+    // Log audit in separate table ideally, but updating record for MVP
     const { error } = await supabase
-      .from("patients")
+      .from("intake_events")
       .update({ 
-        priority: overrideBand,
-        clinical_data: { 
-          ...selectedPatient.clinical_data, 
-          override_note: overrideReason,
-          original_priority: selectedPatient.priority 
-        }
+        risk_band: overrideBand,
+        // Append override note to explanation or store in separate field if schema allows.
+        // For MVP, we'll append to explanation to keep it visible
+        explanation: `[Override: ${overrideReason}] ${selectedPatient.explanation}`
       })
       .eq('id', selectedPatient.id);
 
@@ -125,7 +133,7 @@ export default function DoctorQueue() {
     else {
       toast.success("Priority Updated");
       setSelectedPatient(null);
-      setOverrideReason("");
+      setOverrideReason(OVERRIDE_REASONS[0]);
     }
   }
 
@@ -162,9 +170,8 @@ export default function DoctorQueue() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {sortedQueue.map((patient) => {
-              const style = DISPLAY_MAP[patient.priority as keyof typeof DISPLAY_MAP] || DISPLAY_MAP.GREEN;
+              const style = DISPLAY_MAP[patient.risk_band as keyof typeof DISPLAY_MAP] || DISPLAY_MAP.GREEN;
               const Icon = style.icon;
-              const reasons = (patient.clinical_data as any)?.reasons || [];
               const waitMin = Math.floor((Date.now() - new Date(patient.created_at).getTime()) / 60000);
 
               return (
@@ -182,8 +189,8 @@ export default function DoctorQueue() {
                   <div className="p-4 flex-1 flex flex-col gap-3">
                     <div className="flex justify-between items-start border-b border-slate-100 pb-3">
                       <div>
-                        <h3 className="font-bold text-lg text-slate-800">{patient.age}y / {patient.gender[0]}</h3>
-                        <p className="text-slate-500 text-sm truncate w-40">{patient.complaint}</p>
+                        <h3 className="font-bold text-lg text-slate-800">{patient.age}y / {patient.sex?.[0] || '?'}</h3>
+                        <p className="text-slate-500 text-sm truncate w-40" title={patient.chief_complaint}>{patient.chief_complaint}</p>
                       </div>
                       <div className="text-right">
                          <div className="flex items-center gap-1 text-slate-400 text-xs font-medium">
@@ -197,26 +204,24 @@ export default function DoctorQueue() {
                     </div>
 
                     <div className="space-y-2 flex-1">
-                      {reasons[0] && (
+                      {patient.reason && (
                         <div className="bg-slate-50 p-2 rounded border border-slate-100 text-sm font-medium text-slate-700">
-                           {reasons[0]}
+                           {patient.reason}
                         </div>
                       )}
-                      {reasons[1] && (
-                        <div className="px-2 text-xs text-slate-500 truncate">
-                           • {reasons[1]}
+                       <div className="px-2 text-xs text-slate-500 line-clamp-2">
+                           {patient.explanation}
                         </div>
-                      )}
                     </div>
                   </div>
 
                   {/* Actions */}
                   <div className="p-3 bg-slate-50 border-t border-slate-100 flex gap-2">
                      <button 
-                       onClick={() => handleCallNext(patient.id)}
+                       onClick={() => handleMarkSeen(patient.id)}
                        className="flex-1 bg-slate-900 hover:bg-slate-800 text-white py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition"
                      >
-                       Call Next <ArrowRight className="w-4 h-4" />
+                       Mark Seen <ArrowRight className="w-4 h-4" />
                      </button>
                      <button 
                        onClick={() => setSelectedPatient(patient)}

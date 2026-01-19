@@ -4,31 +4,65 @@ export type RiskBand = "EMERGENCY" | "RED" | "AMBER" | "GREEN";
 
 export interface RiskResult {
   band: RiskBand;
-  reasons: string[];
-  score: number;
+  reason: string;
+  action: string;
+  explanation: string;
+  ui_color: string;
 }
 
 export function calculatePriority(data: TriageInputs): RiskResult {
-  // 1. EMERGENCY override (Deterministic checking)
+  // 1. EMERGENCY: Life-threatening
   if (data.spo2 < 90) {
-    return { band: "EMERGENCY", score: 100, reasons: ["Hypoxia"] };
+    return {
+      band: "EMERGENCY",
+      reason: "Hypoxia",
+      action: "Immediate oxygen and physician attention",
+      explanation: "Low oxygen level detected.",
+      ui_color: "#000000"
+    };
   }
   if (data.chest_pain && data.breathlessness) {
-    return { band: "EMERGENCY", score: 100, reasons: ["Chest pain dyspnea"] };
+    return {
+      band: "EMERGENCY",
+      reason: "Cardiac risk",
+      action: "Immediate ECG and physician attention",
+      explanation: "Chest pain with breathing difficulty.",
+      ui_color: "#000000"
+    };
   }
   if (data.bleeding) {
-    return { band: "EMERGENCY", score: 100, reasons: ["Active bleeding"] };
+    return {
+      band: "EMERGENCY",
+      reason: "Active bleeding",
+      action: "Immediate hemostasis and IV access",
+      explanation: "Active bleeding requires urgent control.",
+      ui_color: "#000000"
+    };
   }
   if (data.altered_sensorium) {
-    return { band: "EMERGENCY", score: 100, reasons: ["Altered sensorium"] };
+    return {
+      band: "EMERGENCY",
+      reason: "Mental status",
+      action: "Immediate physician assessment",
+      explanation: "Altered consciousness detected.",
+      ui_color: "#000000"
+    };
+  }
+  if (data.eye_injury) {
+    return {
+      band: "EMERGENCY",
+      reason: "Eye trauma",
+      action: "Immediate ophthalmology consult",
+      explanation: "Eye injury needs urgent care.",
+      ui_color: "#000000"
+    };
   }
 
-  // 2. SCORING Engine
+  // 2. SCORING Engine (Internal only)
   let score = 0;
   const reasons: string[] = [];
 
   // RED conditions
-  // Temperature >= 39C (Input is likely F 90-110, so converting: >= 102.2F)
   if (data.temperature >= 102.2) {
     score += 30;
     reasons.push("High fever");
@@ -45,29 +79,42 @@ export function calculatePriority(data: TriageInputs): RiskResult {
     score += 30;
     reasons.push("Geriatric acute");
   }
-
-  // CONTEXT scoring
   if (data.pain_score >= 7) {
     score += 15;
-    if (reasons.length < 2) reasons.push("Severe pain");
+    if (!reasons.includes("Severe pain")) reasons.push("High pain");
   }
-  if (data.chronic_conditions) {
+  if (data.chronic_conditions && score > 0) {
     score += 10;
+    // Only add if not main driver
     if (reasons.length < 2) reasons.push("Comorbidity");
   }
 
+  const primaryReason = reasons.length > 0 ? reasons[0] : "Assessment";
+
   // 3. BAND MAPPING
-  let band: RiskBand = "GREEN";
   if (score >= 50) {
-    band = "RED";
+    return {
+      band: "RED",
+      reason: primaryReason,
+      action: "Physician review within 30 minutes",
+      explanation: `${primaryReason} requires urgent attention.`,
+      ui_color: "#EF4444"
+    };
   } else if (score >= 25) {
-    band = "AMBER";
+    return {
+      band: "AMBER",
+      reason: primaryReason || "Moderate concern",
+      action: "Physician review within 2 hours",
+      explanation: `${primaryReason || "Symptoms"} needs timely care.`,
+      ui_color: "#F59E0B"
+    };
   }
 
-  // Max 2 reasons validation cleanup
   return {
-    band,
-    score,
-    reasons: reasons.slice(0, 2),
+    band: "GREEN",
+    reason: "Stable",
+    action: "Standard queue assessment",
+    explanation: "No urgent concerns detected.",
+    ui_color: "#10B981"
   };
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2, AlertTriangle, CheckCircle2, ChevronLeft, RefreshCw } from "lucide-react";
+import { Loader2, AlertTriangle, CheckCircle2, ChevronLeft, RefreshCw, Activity } from "lucide-react";
 import { type TriageInputs } from "@/lib/triage-schema";
 
 // --- Types & Constants ---
@@ -93,7 +93,7 @@ export default function TriageWizard() {
   const [lang, setLang] = useState<Language>("en");
   const [answers, setAnswers] = useState<Partial<TriageInputs>>({});
   const [isRedFlagTriggered, setIsRedFlagTriggered] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [result, setResult] = useState<any>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem("triage_draft");
@@ -164,11 +164,11 @@ export default function TriageWizard() {
 
       if (!res.ok) throw new Error("Submission failed");
       
-      const result = await res.json();
+      const resultData = await res.json();
       localStorage.removeItem("triage_draft"); 
       
-      toast.success("Triage Completed");
-      window.location.href = "/";
+      setResult(resultData);
+      toast.success("Assessment Complete");
       
     } catch (error) {
       console.error(error);
@@ -177,6 +177,51 @@ export default function TriageWizard() {
       setIsSubmitting(false);
     }
   };
+
+  if (result) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
+        <div className="bg-white w-full max-w-md p-8 rounded-3xl shadow-xl border-2 border-slate-100 space-y-8 animate-in zoom-in-95 duration-300">
+          
+          <div className="flex flex-col items-center space-y-4">
+             <div 
+               className="w-32 h-32 rounded-full flex items-center justify-center shadow-lg"
+               style={{ backgroundColor: result.ui_color }}
+             >
+                {result.band === "EMERGENCY" && <AlertTriangle className="w-16 h-16 text-white animate-pulse" />}
+                {result.band === "RED" && <AlertTriangle className="w-16 h-16 text-white" />}
+                {result.band === "AMBER" && <Activity className="w-16 h-16 text-white" />}
+                {result.band === "GREEN" && <CheckCircle2 className="w-16 h-16 text-white" />}
+             </div>
+             <div>
+                <h1 className="text-4xl font-black tracking-tight" style={{ color: result.ui_color }}>
+                  {result.band}
+                </h1>
+                <p className="text-xl font-medium text-slate-500 mt-2">{result.reason}</p>
+             </div>
+          </div>
+
+          <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 text-left space-y-4">
+             <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Doctor Action</label>
+                <p className="text-lg font-bold text-slate-800 leading-snug">{result.action}</p>
+             </div>
+             <div>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Explanation</label>
+                <p className="text-md text-slate-600 leading-relaxed">{result.explanation}</p>
+             </div>
+          </div>
+
+          <button 
+            onClick={() => window.location.reload()}
+            className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold text-lg hover:scale-[1.02] transition-transform"
+          >
+            Start New Assessment
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (isRedFlagTriggered) {
     return (
