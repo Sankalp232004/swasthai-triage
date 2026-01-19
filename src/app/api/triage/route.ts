@@ -56,8 +56,8 @@ export async function POST(request: Request) {
           risk_band: riskResult.band,
           reason: riskResult.reason,
           explanation: riskResult.explanation,
-          actions: riskResult.action, // doctor instruction
-          ui_color: riskResult.ui_color,
+          // actions: riskResult.action, // Removed: Not in schema
+          // ui_color: riskResult.ui_color, // Removed: Not in schema
           status: "Waiting",
         },
       ])

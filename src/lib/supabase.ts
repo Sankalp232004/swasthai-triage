@@ -36,6 +36,6 @@ export type IntakeEvent = {
   reason: string;
   explanation: string;
   status: "Waiting" | "Seen";
-  actions: string; // Doctor instruction
-  ui_color: string;
+  // actions: string; // Removed from DB
+  // ui_color: string; // Removed from DB
 };
