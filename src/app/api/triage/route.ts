@@ -73,7 +73,10 @@ export async function POST(request: Request) {
 
     const triageId = insertData[0].id;
 
-    // 5. Return clean result (No score, No probability)
+    // 5. Return clean result (Strict Data Contract)
+    // No ui_color in API response to keep logic frontend-agnostic if needed, 
+    // but UI typically needs it. User asked for specific shape:
+    // { triage_id, band, reason, action, explanation }
     return NextResponse.json(
       {
         triage_id: triageId,
@@ -81,7 +84,6 @@ export async function POST(request: Request) {
         reason: riskResult.reason,
         action: riskResult.action,
         explanation: riskResult.explanation,
-        ui_color: riskResult.ui_color,
       },
       { status: 201 }
     );

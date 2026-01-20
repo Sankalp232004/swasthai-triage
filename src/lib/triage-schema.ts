@@ -1,28 +1,20 @@
 import { z } from "zod";
 
 export const CHIEF_COMPLAINTS = [
-  "Fever",
-  "Cough",
-  "Headache",
-  "Body Ache",
-  "Abdominal Pain",
-  "Indigestion",
-  "Loose Motion",
-  "Vomiting",
-  "Urinary Issues",
-  "Skin Rash",
-  "Ear Pain",
-  "Eye Pain",
-  "Dental Pain",
-  "Injury",
-  "Weakness",
-  "Other"
+  "fever",
+  "cough",
+  "chest_pain",
+  "breathlessness",
+  "abdominal_pain",
+  "injury",
+  "eye_problem",
+  "other"
 ] as const;
 
 export const TriageInputSchema = z.object({
   // 1. Demographics (2)
   age: z.coerce.number().min(0).max(120),
-  gender: z.enum(["Male", "Female", "Other"]),
+  gender: z.enum(["male", "female", "other"]),
 
   // 2. Vitals (3)
   temperature: z.coerce.number().min(90).max(110),

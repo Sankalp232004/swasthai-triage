@@ -6,7 +6,7 @@ export default function Home() {
       <div className="w-full max-w-md bg-white rounded-xl shadow border border-slate-200">
         <div className="p-6 text-center border-b border-slate-100">
           <h1 className="text-2xl font-bold text-slate-900">SwasthAI</h1>
-          <p className="text-slate-500 text-sm mt-1">Intelligent Triage System (MVP)</p>
+          <p className="text-slate-500 text-sm mt-1">Rules-based triage ONLY (priority-based, not score-based)</p>
         </div>
         <div className="p-6 space-y-4">
           <Link href="/patient/triage" className="block w-full">

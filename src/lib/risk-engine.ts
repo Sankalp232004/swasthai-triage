@@ -11,110 +11,204 @@ export interface RiskResult {
 }
 
 export function calculatePriority(data: TriageInputs): RiskResult {
-  // 1. EMERGENCY: Life-threatening
+  // ---------------------------------------------------------
+  // 1. EMERGENCY (Black) - Life Threatening
+  // Immediate resuscitation / intervention required
+  // ---------------------------------------------------------
+
   if (data.spo2 < 90) {
     return {
       band: "EMERGENCY",
-      reason: "Hypoxia",
-      action: "Immediate oxygen and physician attention",
-      explanation: "Low oxygen level detected.",
+      reason: "Critical Hypoxia",
+      action: "Immediate oxygen & resuscitation room",
+      explanation: `SpO2 at ${data.spo2}% indicates critical respiratory failure.`,
       ui_color: "#000000"
     };
   }
+
+  // Chest pain with breathlessness is a classic cardiac/PE red flag
   if (data.chest_pain && data.breathlessness) {
     return {
       band: "EMERGENCY",
-      reason: "Cardiac risk",
-      action: "Immediate ECG and physician attention",
-      explanation: "Chest pain with breathing difficulty.",
+      reason: "Cardiopulmonary Compromise",
+      action: "Immediate ECG & physician review",
+      explanation: "Chest pain combined with dyspnea suggests acute cardiac event.",
       ui_color: "#000000"
     };
   }
+
   if (data.bleeding) {
     return {
       band: "EMERGENCY",
-      reason: "Active bleeding",
-      action: "Immediate hemostasis and IV access",
-      explanation: "Active bleeding requires urgent control.",
+      reason: "Active Hemorrhage",
+      action: "Immediate hemostasis & fluids",
+      explanation: "Active uncontrolled bleeding reported.",
       ui_color: "#000000"
     };
   }
+
   if (data.altered_sensorium) {
     return {
       band: "EMERGENCY",
-      reason: "Mental status",
-      action: "Immediate physician assessment",
-      explanation: "Altered consciousness detected.",
+      reason: "Altered Mental Status",
+      action: "Secure airway & immediate neurological check",
+      explanation: "Patient reports confusion or reduced consciousness.",
       ui_color: "#000000"
     };
   }
+
+  // Eye injuries can be vision-threatening emergencies
   if (data.eye_injury) {
     return {
       band: "EMERGENCY",
-      reason: "Eye trauma",
-      action: "Immediate ophthalmology consult",
-      explanation: "Eye injury needs urgent care.",
+      reason: "Ocular Emergnecy",
+      action: "Immediate ophthalmology/ED assessment",
+      explanation: "Potential vision-threatening eye trauma.",
       ui_color: "#000000"
     };
   }
 
-  // 2. SCORING Engine (Internal only)
-  let score = 0;
-  const reasons: string[] = [];
+  // ---------------------------------------------------------
+  // 2. RED (High) - Urgent
+  // Assessment within 15-30 minutes
+  // ---------------------------------------------------------
 
-  // RED conditions
-  if (data.temperature >= 102.2) {
-    score += 30;
-    reasons.push("High fever");
-  }
-  if (data.pulse > 120) {
-    score += 30;
-    reasons.push("Tachycardia");
-  }
-  if (data.severe_abdominal_pain) {
-    score += 40;
-    reasons.push("Severe pain");
-  }
-  if (data.age > 60 && data.duration_days < 3) {
-    score += 30;
-    reasons.push("Geriatric acute");
-  }
-  if (data.pain_score >= 7) {
-    score += 15;
-    if (!reasons.includes("Severe pain")) reasons.push("High pain");
-  }
-  if (data.chronic_conditions && score > 0) {
-    score += 10;
-    // Only add if not main driver
-    if (reasons.length < 2) reasons.push("Comorbidity");
-  }
-
-  const primaryReason = reasons.length > 0 ? reasons[0] : "Assessment";
-
-  // 3. BAND MAPPING
-  if (score >= 50) {
+  // Isolated Chest Pain (without breathlessness)
+  if (data.chest_pain) {
     return {
       band: "RED",
-      reason: primaryReason,
-      action: "Physician review within 30 minutes",
-      explanation: `${primaryReason} requires urgent attention.`,
+      reason: "Chest Pain",
+      action: "Urgent ECG within 15 mins",
+      explanation: "Chest pain requires urgent exclusion of ACS.",
       ui_color: "#EF4444"
     };
-  } else if (score >= 25) {
+  }
+
+  // Severe Abdominal Pain (Acute surgical?)
+  if (data.severe_abdominal_pain || (data.complaint === "abdominal_pain" && data.pain_score >= 8)) {
+     return {
+      band: "RED",
+      reason: "Severe Abdominal Pain",
+      action: "Urgent surgical assessment & pain management",
+      explanation: "Severe intensity abdominal pain.",
+      ui_color: "#EF4444"
+    };
+  }
+
+  // Breathlessness (without chest pain, but still urgent)
+  if (data.breathlessness) {
+    return {
+      band: "RED",
+      reason: "Respiratory Distress",
+      action: "Urgent nebulization/assessment",
+      explanation: "Difficulty breathing reported.",
+      ui_color: "#EF4444"
+    };
+  }
+
+  // Very High Fever
+  if (data.temperature > 103) {
+    return {
+      band: "RED",
+      reason: "Hyperpyrexia",
+      action: "Urgent antipyretics & evaluation",
+      explanation: `Temperature of ${data.temperature}°F is dangerously high.`,
+      ui_color: "#EF4444"
+    };
+  }
+
+  // Tachycardia
+  if (data.pulse > 120) {
+    return {
+      band: "RED",
+      reason: "Signifcant Tachycardia",
+      action: "Urgent vitals monitoring",
+      explanation: `Resting heart rate of ${data.pulse} bpm is elevated.`,
+      ui_color: "#EF4444"
+    };
+  }
+
+  // Severe Pain (General)
+  if (data.pain_score >= 8) {
+    return {
+      band: "RED",
+      reason: "Severe Pain",
+      action: "Urgent analgesia & assessment",
+      explanation: `Pain score of ${data.pain_score}/10 requires urgent relief.`,
+      ui_color: "#EF4444"
+    };
+  }
+
+  // ---------------------------------------------------------
+  // 3. AMBER (Medium)
+  // Assessment within 60 minutes
+  // ---------------------------------------------------------
+
+  // Moderate Fever
+  if (data.temperature > 100.4) {
     return {
       band: "AMBER",
-      reason: primaryReason || "Moderate concern",
-      action: "Physician review within 2 hours",
-      explanation: `${primaryReason || "Symptoms"} needs timely care.`,
+      reason: "Febrile",
+      action: "Doctor review within 60 mins",
+      explanation: "Moderate fever present.",
       ui_color: "#F59E0B"
     };
   }
 
+  // Moderate Pain
+  if (data.pain_score >= 5) {
+    return {
+      band: "AMBER",
+      reason: "Moderate Pain",
+      action: "Analgesia & assessment",
+      explanation: `Pain score ${data.pain_score}/10.`,
+      ui_color: "#F59E0B"
+    };
+  }
+
+  // Elevated Pulse
+  if (data.pulse > 100) {
+    return {
+      band: "AMBER",
+      reason: "Tachycardia",
+      action: "Check dehydration/infection",
+      explanation: "Heart rate is mildly elevated.",
+      ui_color: "#F59E0B"
+    };
+  }
+
+  // Vulnerable Group: Elderly with acute issue
+  if (data.age >= 60 && data.duration_days < 7) {
+     return {
+      band: "AMBER",
+      reason: "Geriatric Risk",
+      action: "Prioritize slightly for age",
+      explanation: "Senior patient with acute onset symptoms.",
+      ui_color: "#F59E0B"
+    };
+  }
+
+  // Comorbidities with acute symptoms
+  if (data.chronic_conditions && data.duration_days < 7) {
+    return {
+      band: "AMBER",
+      reason: "Comorbidity Factor",
+      action: "Review concurrent med/conditions",
+      explanation: "New symptoms in patient with chronic history.",
+      ui_color: "#F59E0B"
+    };
+  }
+
+  // ---------------------------------------------------------
+  // 4. GREEN (Low)
+  // Standard Queue
+  // ---------------------------------------------------------
+  
   return {
     band: "GREEN",
-    reason: "Stable",
-    action: "Standard queue assessment",
-    explanation: "No urgent concerns detected.",
+    reason: "Non-Urgent",
+    action: "Routine OPD Consult",
+    explanation: "Vitals stable, no red flags detected.",
     ui_color: "#10B981"
   };
 }

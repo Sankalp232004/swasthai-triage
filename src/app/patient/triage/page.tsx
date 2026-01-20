@@ -48,6 +48,17 @@ const QUESTIONS: Record<string, { en: string; hi: string }> = {
   q_pain: { en: "Pain Severity (0-10)", hi: "दर्द कितना है (0-10)?" },
   q_chronic: { en: "Any Chronic Disease?", hi: "क्या पहले से कोई बीमारी है?" },
   
+  // Complaints UI Maps
+  fever: { en: "Fever", hi: "बुखार" },
+  cough: { en: "Cough", hi: "खांसी" },
+  chest_pain: { en: "Chest Pain", hi: "छाती में दर्द" },
+  breathlessness: { en: "Breathlessness", hi: "सांस लेने में तकलीफ" },
+  abdominal_pain: { en: "Abdominal Pain", hi: "पेट दर्द" },
+  injury: { en: "Injury", hi: "चोट" },
+  eye_problem: { en: "Eye Problem", hi: "आंख की समस्या" },
+  // other is already below? No, it's 'Other' in code sometimes. 
+  // Let's rely on standard keys.
+
   // Red Flags
   q_chest: { en: "Do you have Chest Pain?", hi: "क्या छाती में दर्द है?" },
   q_breath: { en: "Difficulty Breathing?", hi: "क्या सांस लेने में तकलीफ है?" },
@@ -58,17 +69,21 @@ const QUESTIONS: Record<string, { en: string; hi: string }> = {
 };
 
 const CHIEF_COMPLAINTS_LIST = [
-  "Fever", "Cough", "Headache", "Body Ache", "Abdominal Pain", 
-  "Indigestion", "Loose Motion", "Vomiting", "Urinary Issues", 
-  "Skin Rash", "Ear Pain", "Eye Pain", "Dental Pain", 
-  "Injury", "Weakness", "Other"
+  "fever",
+  "cough",
+  "chest_pain",
+  "breathlessness",
+  "abdominal_pain",
+  "injury",
+  "eye_problem",
+  "other"
 ];
 
 const RED_SCREEN_STYLE = "fixed inset-0 z-50 bg-red-600 flex flex-col items-center justify-center text-white p-8 text-center animate-in fade-in duration-300";
 
 // --- Wizard Configuration ---
 const STEPS: StepData[] = [
-  { id: "gender", field: "gender", type: "select", options: ["Male", "Female", "Other"] },
+  { id: "gender", field: "gender", type: "select", options: ["male", "female", "other"] },
   { id: "age", field: "age", type: "number", min: 0, max: 120 },
   { id: "temperature", field: "temperature", type: "number", min: 90, max: 110 },
   { id: "pulse", field: "pulse", type: "number", min: 30, max: 250 },
@@ -194,7 +209,19 @@ export default function TriageWizard() {
     }
   };
 
+  // --- Helper for UI Colors (Client Side now) ---
+  const getBandColor = (band: string) => {
+    switch (band) {
+      case "EMERGENCY": return "#000000";
+      case "RED": return "#EF4444";
+      case "AMBER": return "#F59E0B";
+      case "GREEN": return "#10B981";
+      default: return "#94A3B8";
+    }
+  };
+
   if (result) {
+    const uiColor = getBandColor(result.band);
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
         <div className="bg-white w-full max-w-md p-8 rounded-3xl shadow-xl border-2 border-slate-100 space-y-8 animate-in zoom-in-95 duration-300">
@@ -202,7 +229,7 @@ export default function TriageWizard() {
           <div className="flex flex-col items-center space-y-4">
              <div 
                className="w-32 h-32 rounded-full flex items-center justify-center shadow-lg"
-               style={{ backgroundColor: result.ui_color }}
+               style={{ backgroundColor: uiColor }}
              >
                 {result.band === "EMERGENCY" && <AlertTriangle className="w-16 h-16 text-white animate-pulse" />}
                 {result.band === "RED" && <AlertTriangle className="w-16 h-16 text-white" />}
@@ -210,7 +237,7 @@ export default function TriageWizard() {
                 {result.band === "GREEN" && <CheckCircle2 className="w-16 h-16 text-white" />}
              </div>
              <div>
-                <h1 className="text-4xl font-black tracking-tight" style={{ color: result.ui_color }}>
+                <h1 className="text-4xl font-black tracking-tight" style={{ color: uiColor }}>
                   {result.band}
                 </h1>
                 <p className="text-xl font-medium text-slate-500 mt-2">{result.reason}</p>
